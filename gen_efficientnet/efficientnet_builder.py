@@ -26,13 +26,39 @@ def round_channels(channels, depth_multiplier=1.0, depth_divisor=8, min_depth=No
         new_channels += depth_divisor
     return new_channels
 
-
+'''
 def swish(x, inplace=False):
     if inplace:
         return x.mul_(x.sigmoid())
     else:
         return x * x.sigmoid()
+'''
+# https://www.kaggle.com/c/rsna-intracranial-hemorrhage-detection/discussion/111292#latest-641815
+sigmoid = torch.nn.Sigmoid()
+class Swish(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, i):
+        result = i * sigmoid(i)
+        ctx.save_for_backward(i)
+        return result
 
+    @staticmethod
+    def backward(ctx, grad_output):
+        i = ctx.saved_variables[0]
+        sigmoid_i = sigmoid(i)
+        return grad_output * (sigmoid_i * (1 + i * (1 - sigmoid_i)))
+
+swish = Swish.apply
+
+class Swish_module(nn.Module):
+    def forward(self, x):
+        return swish(x)
+
+swish_layer = Swish_module()
+def relu_fn(x):
+    """ Swish activation function """
+    # return x * torch.sigmoid(x)
+    return swish_layer(x)
 
 def sigmoid(x, inplace=False):
     return x.sigmoid_() if inplace else x.sigmoid()
